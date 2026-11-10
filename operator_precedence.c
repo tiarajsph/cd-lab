@@ -2,197 +2,160 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Stack stores symbols during parsing */
-char stack[100];
-int top = 0;              /* Index of top of stack */
+/*
+ALGORITHM:
 
-/* input stores expression; ip points to current input symbol */
-char input[100];
-int ip = 0;
-
-/* Terminal order used in the precedence table:
-   +, *, (, ), i, $ */
-char terminals[] = "+*()i$";
-
-/* Precedence table:
-   < means SHIFT
-   = means SHIFT (matching parentheses or end marker)
-   > means REDUCE
-   blank means INVALID */
-char table[6][6] = {
-    {'>', '<', '<', '>', '<', '>'}, /* + */
-    {'>', '>', '<', '>', '<', '>'}, /* * */
-    {'<', '<', '<', '=', '<', ' '}, /* ( */
-    {'>', '>', ' ', '>', ' ', '>'}, /* ) */
-    {'>', '>', ' ', '>', ' ', '>'}, /* i */
-    {'<', '<', '<', ' ', '<', '='}  /* $ */
-};
+1. Read the arithmetic expression.
+2. Append $ to the end of the input.
+3. Initialize the stack with $.
+4. Repeat until the expression is accepted or an error occurs:
+   a. Find the topmost terminal in the stack.
+   b. Compare it with the current input symbol.
+   c. If both are $, ACCEPT.
+   d. If both are operands, ERROR.
+   e. If input has higher precedence, SHIFT.
+   f. If stack contains an operand, REDUCE it to E.
+   g. If stack contains E operator E, REDUCE it to E.
+   h. Otherwise, ERROR.
+5. Display stack, input and action at every step.
 
 
-/* Find the index of a terminal in the table.
-   Example: indexOf('+') = 0, indexOf('i') = 4.
-   Return -1 if the character is not a terminal. */
-int indexOf(char c)
+PSEUDOCODE:
+
+Initialize stack = $
+Read expression
+Append $ to expression
+
+While true:
+
+    Find top terminal in stack
+    a = top terminal
+    b = current input
+
+    If a == $ AND b == $:
+        ACCEPT
+        Stop
+
+    If a == i AND b == i:
+        ERROR
+        Stop
+
+    If input has higher precedence:
+        SHIFT input to stack
+        Move input pointer forward
+
+    Else if stack top == i:
+        Replace i with E
+        REDUCE
+
+    Else if stack contains E operator E:
+        Replace E operator E with E
+        REDUCE
+
+    Else:
+        ERROR
+        Stop
+
+
+LOGIC:
+
+- Stack stores symbols being processed.
+- Input stores the remaining expression.
+- $ represents the beginning/end marker.
+- i represents an operand.
+- E represents a reduced expression.
+- * and / have precedence 2.
+- + and - have precedence 1.
+- SHIFT moves an input symbol to the stack.
+- REDUCE replaces an operand or E operator E with E.
+- ACCEPT means the expression is valid.
+- ERROR means the expression is invalid.
+*/
+
+char stack[100] = "$", input[100];
+int top = 0, ip = 0;
+
+// Find operator precedence
+int level(char c)
 {
-    int i;
-
-    for (i = 0; i < 6; i++)
-        if (terminals[i] == c)
-            return i;
-
-    return -1;
+    return (c == '*' || c == '/') ? 2 : 1;
 }
-
-
-/* Find the topmost TERMINAL in the stack.
-   Ignore E because E is a non-terminal.
-   The precedence table compares terminals only. */
-char topTerminal()
-{
-    int i;
-
-    for (i = top; i >= 0; i--)
-    {
-        if (indexOf(stack[i]) != -1)
-            return stack[i];
-    }
-
-    return '$';
-}
-
-
-/* REDUCE: Replace a recognized RHS with E.
-   Return 1 if reduction succeeds, otherwise return 0. */
-int reduce()
-{
-    /* E + E -> E */
-    if (top >= 2 &&
-        stack[top-2] == 'E' &&
-        stack[top-1] == '+' &&
-        stack[top] == 'E')
-    {
-        top = top - 2;
-        stack[top] = 'E';
-        stack[top+1] = '\0';
-        return 1;
-    }
-
-    /* E * E -> E */
-    if (top >= 2 &&
-        stack[top-2] == 'E' &&
-        stack[top-1] == '*' &&
-        stack[top] == 'E')
-    {
-        top = top - 2;
-        stack[top] = 'E';
-        stack[top+1] = '\0';
-        return 1;
-    }
-
-    /* ( E ) -> E */
-    if (top >= 2 &&
-        stack[top-2] == '(' &&
-        stack[top-1] == 'E' &&
-        stack[top] == ')')
-    {
-        top = top - 2;
-        stack[top] = 'E';
-        stack[top+1] = '\0';
-        return 1;
-    }
-
-    /* i -> E */
-    if (stack[top] == 'i')
-    {
-        stack[top] = 'E';
-        return 1;
-    }
-
-    /* No pattern matched */
-    return 0;
-}
-
 
 int main()
 {
-    char a, b, relation;
-    int row, col;
+    char a, b;
 
-    printf("Enter expression (use i for identifier): ");
-    scanf("%99s", input);
+    printf("Enter the expression (use i for operand): ");
+    scanf("%s", input);
 
-    /* Append $ to mark the end of input */
     strcat(input, "$");
 
-    /* Initialize stack with $ */
-    stack[0] = '$';
-    stack[1] = '\0';
-
-    printf("\nStack\tInput\tAction\n");
+    printf("\n%-15s %-15s %s\n", "STACK", "INPUT", "ACTION");
 
     while (1)
     {
-        /* ACCEPT:
-           Stack contains $E and input is exhausted ($). */
-        if (top == 1 &&
-            stack[0] == '$' &&
-            stack[1] == 'E' &&
-            input[ip] == '$')
-        {
-            printf("%s\t%s\tAccept\n", stack, input + ip);
-            break;
-        }
+        int k = top;
 
-        /* a = topmost terminal in stack
-           b = current input symbol */
-        a = topTerminal();
+        // Find topmost terminal, skipping E
+        while (stack[k] == 'E')
+            k--;
+
+        a = stack[k];
         b = input[ip];
 
-        /* Convert both terminals to table indices */
-        row = indexOf(a);
-        col = indexOf(b);
+        printf("%-15s %-15s ", stack, input + ip);
 
-        /* Invalid character: never index the table with -1 */
-        if (row == -1 || col == -1)
+        // Accept
+        if (a == '$' && b == '$')
         {
-            printf("Invalid expression\n");
+            puts("ACCEPT");
             break;
         }
 
-        /* Get precedence relation between a and b */
-        relation = table[row][col];
+        // Invalid consecutive operands
+        if (a == 'i' && b == 'i')
+        {
+            puts("ERROR");
+            break;
+        }
 
-        /* SHIFT when relation is < or = */
-        if (relation == '<' || relation == '=')
+        // Check whether to shift
+        int shift = a == '$' ||
+                    (b != '$' && a != 'i' &&
+                    (b == 'i' || level(a) < level(b)));
+
+        if (shift)
         {
             stack[++top] = b;
-            stack[top+1] = '\0';
+            stack[top + 1] = '\0';
+            ip++;
 
-            printf("%s\t%s\tShift %c\n",
-                   stack, input + ip, b);
-
-            ip++;  /* Consume the input symbol */
+            puts("SHIFT");
         }
 
-        /* REDUCE when relation is > */
-        else if (relation == '>')
+        // Reduce operand i to E
+        else if (stack[top] == 'i')
         {
-            if (reduce())
-            {
-                printf("%s\t%s\tReduce\n",
-                       stack, input + ip);
-            }
-            else
-            {
-                printf("Invalid expression\n");
-                break;
-            }
+            stack[top] = 'E';
+            puts("REDUCE");
         }
 
-        /* Blank table entry means invalid expression */
+        // Reduce E operator E to E
+        else if (top >= 2 &&
+                 stack[top] == 'E' &&
+                 stack[top - 2] == 'E' &&
+                 strchr("+-*/", stack[top - 1]))
+        {
+            top -= 2;
+            stack[top] = 'E';
+            stack[top + 1] = '\0';
+
+            puts("REDUCE");
+        }
+
         else
         {
-            printf("Invalid expression\n");
+            puts("ERROR");
             break;
         }
     }

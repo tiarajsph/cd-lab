@@ -1,130 +1,71 @@
-#include <stdio.h>
-#include <string.h>
 
+#include <stdio.h>
 #define MAX 20
 
-int n;
+/*
+ALGORITHM:
+1. Read number of states and epsilon transition matrix.
+2. Read the starting state.
+3. Mark the starting state as visited.
+4. Find all states reachable through epsilon transitions.
+5. Recursively visit unvisited states.
+6. Print all visited states.
 
-char states[MAX][10];
-int epsilon[MAX][MAX];
-int visited[MAX];
+PSEUDOCODE:
+closure(s):
+    visited[s] = 1
+    for each state i:
+        if a[s][i] == 1 AND visited[i] == 0:
+            closure(i)
 
+main:
+    Read n and transition matrix
+    Read starting state
+    Call closure(start)
+    Print all visited states
 
-/* Find the index of a state */
-int getIndex(char state[])
+LOGIC:
+- a[s][i] = 1 means an epsilon transition exists.
+- visited[] prevents repeated visits.
+- Recursion finds directly and indirectly reachable states.
+*/
+
+int n, a[MAX][MAX], visited[MAX];
+
+void closure(int s)
 {
-    for (int i = 0; i < n; i++)
-    {
-        if (strcmp(states[i], state) == 0)
-            return i;
-    }
-
-    return -1;
-}
-
-
-/* Find epsilon-closure using DFS */
-void dfs(int v)
-{
-    visited[v] = 1;       // Mark current state as visited
+    visited[s] = 1;
 
     for (int i = 0; i < n; i++)
-    {
-        /*
-           If there is an epsilon transition
-           from v to i, and i is not visited,
-           follow it.
-        */
-        if (epsilon[v][i] && !visited[i])
-        {
-            dfs(i);
-        }
-    }
+        if (a[s][i] && !visited[i])
+            closure(i);
 }
-
 
 int main()
 {
-    int e;
-    char from[10], to[10];
+    int start;
 
-
-    /* Read number of states */
-
-    printf("Enter number of states: ");
+    printf("Enter the number of states: ");
     scanf("%d", &n);
 
-
-    /* Read state names */
-
-    printf("Enter state names:\n");
+    printf("Enter the epsilon transition matrix (%d x %d):\n", n, n);
 
     for (int i = 0; i < n; i++)
-    {
-        scanf("%s", states[i]);
-    }
-
-
-    /*
-       Initially there are no epsilon transitions.
-       So set the whole matrix to 0.
-    */
-
-    for (int i = 0; i < n; i++)
-    {
         for (int j = 0; j < n; j++)
-        {
-            epsilon[i][j] = 0;
-        }
-    }
+            scanf("%d", &a[i][j]);
 
+    printf("Enter the state to find epsilon-closure (0 to %d): ", n - 1);
+    scanf("%d", &start);
 
-    /* Read epsilon transitions */
+    closure(start);
 
-    printf("Enter number of epsilon transitions: ");
-    scanf("%d", &e);
-
-    printf("Enter epsilon transitions (from to):\n");
-
-    for (int i = 0; i < e; i++)
-    {
-        scanf("%s %s", from, to);
-
-        int u = getIndex(from);
-        int v = getIndex(to);
-
-        epsilon[u][v] = 1;
-    }
-
-
-    /* Find epsilon-closure of every state */
-
-    printf("\nEpsilon Closures:\n");
+    printf("Epsilon-closure of state %d: { ", start);
 
     for (int i = 0; i < n; i++)
-    {
-        /*
-           Clear visited before finding
-           the closure of a new state.
-        */
-        memset(visited, 0, sizeof(visited));
+        if (visited[i])
+            printf("%d ", i);
 
-        dfs(i);
-
-        printf("ε-closure(%s) = { ", states[i]);
-
-        /* Print all states reached by DFS */
-
-        for (int j = 0; j < n; j++)
-        {
-            if (visited[j])
-            {
-                printf("%s ", states[j]);
-            }
-        }
-
-        printf("}\n");
-    }
+    printf("}\n");
 
     return 0;
 }
